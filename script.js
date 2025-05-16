@@ -1,23 +1,35 @@
 const canvas = document.getElementById("puzzleCanvas");
 const ctx = canvas.getContext("2d");
 const rows = 3, cols = 3;
-const pieceSize = canvas.width / cols;
-let pieces = [], dragging = false, selectedPiece = null;
+let pieces = [], selectedPiece = null;
+
+let pieceSize = canvas.width / cols;
+let scaledImage = { x: 0, y: 0, width: canvas.width, height: canvas.height };
 
 let startTime, timerInterval;
 let playerName = "";
+let gameStarted = false;
 
 const image = new Image();
 image.crossOrigin = "Anonymous";
-image.src = "https://picsum.photos/400";
+image.src = "https://i.ibb.co/vxDRxZtX/IMG-20240928-125307.jpg";
+
+// Handle user image uploads
+function loadUserImage(file) {
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    image.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 
 image.onload = () => {
-  initPuzzle();
-  drawPuzzle();
+  drawResizedImage(); // Just draw image initially — don't start puzzle yet
 };
 
+// Start game only after name entered
 function startGame() {
-  playerName = document.getElementById("playerName").value;
+  playerName = document.getElementById("playerName").value.trim();
   if (!playerName) {
     alert("Please enter your name to start the game.");
     return;
@@ -26,9 +38,13 @@ function startGame() {
   document.getElementById("nameForm").style.display = "none";
   document.getElementById("timer").style.display = "block";
 
+  initPuzzle();
+  drawPuzzle();
   startTimer();
+  gameStarted = true;
 }
 
+// Timer logic
 function startTimer() {
   startTime = Date.now();
   const timerDisplay = document.getElementById("timer");
@@ -42,6 +58,30 @@ function stopTimer() {
   clearInterval(timerInterval);
 }
 
+// Image resizing logic
+function drawResizedImage() {
+  let imgWidth = image.naturalWidth;
+  let imgHeight = image.naturalHeight;
+
+  let scale = Math.min(canvas.width / imgWidth, canvas.height / imgHeight);
+  let scaledWidth = imgWidth * scale;
+  let scaledHeight = imgHeight * scale;
+
+  let offsetX = (canvas.width - scaledWidth) / 2;
+  let offsetY = (canvas.height - scaledHeight) / 2;
+
+  scaledImage = {
+    x: offsetX,
+    y: offsetY,
+    width: scaledWidth,
+    height: scaledHeight
+  };
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(image, 0, 0, imgWidth, imgHeight, offsetX, offsetY, scaledWidth, scaledHeight);
+}
+
+// Initialize the puzzle pieces
 function initPuzzle() {
   pieces = [];
   let positions = [];
@@ -54,6 +94,7 @@ function initPuzzle() {
     const j = Math.floor(Math.random() * (i + 1));
     [positions[i], positions[j]] = [positions[j], positions[i]];
   }
+
   let index = 0;
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
@@ -63,108 +104,89 @@ function initPuzzle() {
   }
 }
 
-function drawPuzzle(highlighted) {
+// Draw puzzle based on piece positions
+function drawPuzzle() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawResizedImage();
+
+  const pieceWidth = scaledImage.width / cols;
+  const pieceHeight = scaledImage.height / rows;
+
   for (const p of pieces) {
     ctx.drawImage(
       image,
-      p.x * pieceSize, p.y * pieceSize, pieceSize, pieceSize,
-      p.currentX * pieceSize, p.currentY * pieceSize, pieceSize, pieceSize
+      p.x * image.naturalWidth / cols,
+      p.y * image.naturalHeight / rows,
+      image.naturalWidth / cols,
+      image.naturalHeight / rows,
+      scaledImage.x + p.currentX * pieceWidth,
+      scaledImage.y + p.currentY * pieceHeight,
+      pieceWidth,
+      pieceHeight
     );
-    if (highlighted && highlighted === p) {
+
+    if (selectedPiece === p) {
       ctx.strokeStyle = "red";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(p.currentX * pieceSize, p.currentY * pieceSize, pieceSize, pieceSize);
+      ctx.lineWidth = 4;
+      ctx.strokeRect(
+        scaledImage.x + p.currentX * pieceWidth,
+        scaledImage.y + p.currentY * pieceHeight,
+        pieceWidth,
+        pieceHeight
+      );
     }
   }
 }
 
-function getEventPosition(event) {
+// Handle clicks/taps
+function onTap(event) {
+  if (!gameStarted) return;
+
   event.preventDefault();
   const rect = canvas.getBoundingClientRect();
-  let x, y;
+  let x = event.clientX || event.touches?.[0]?.clientX;
+  let y = event.clientY || event.touches?.[0]?.clientY;
 
-  if (event.touches) {
-    x = event.touches[0].clientX - rect.left;
-    y = event.touches[0].clientY - rect.top;
-    console.log(`Touch detected at: ${x}, ${y}`);
+  x = x - rect.left - scaledImage.x;
+  y = y - rect.top - scaledImage.y;
+
+  const pieceWidth = scaledImage.width / cols;
+  const pieceHeight = scaledImage.height / rows;
+
+  const cx = Math.floor(x / pieceWidth);
+  const cy = Math.floor(y / pieceHeight);
+
+  const tapped = pieces.find(p => p.currentX === cx && p.currentY === cy);
+  if (!tapped) return;
+
+  if (!selectedPiece) {
+    selectedPiece = tapped;
   } else {
-    x = event.clientX - rect.left;
-    y = event.clientY - rect.top;
-    console.log(`Mouse detected at: ${x}, ${y}`);
-  }
-  
-  return { x, y };
-}
-
-function onStart(event) {
-  event.preventDefault();
-  console.log("Touch or mouse start detected");
-
-  const { x, y } = getEventPosition(event);
-  const cx = Math.floor(x / pieceSize);
-  const cy = Math.floor(y / pieceSize);
-  
-  console.log(`Detected grid: (${cx}, ${cy})`);
-  
-  selectedPiece = pieces.find(p => p.currentX === cx && p.currentY === cy);
-  if (selectedPiece) {
-    console.log("Piece selected");
-    dragging = true;
-  }
-}
-
-function onMove(event) {
-  if (dragging && selectedPiece) {
-    event.preventDefault();
-    console.log("Dragging...");
-    drawPuzzle(selectedPiece);
-  }
-}
-
-function onEnd(event) {
-  if (!dragging || !selectedPiece) return;
-  event.preventDefault();
-  console.log("Touch or mouse end detected");
-
-  dragging = false;
-  const { x, y } = getEventPosition(event);
-  const cx = Math.floor(x / pieceSize);
-  const cy = Math.floor(y / pieceSize);
-
-  const target = pieces.find(p => p.currentX === cx && p.currentY === cy);
-  if (target && target !== selectedPiece) {
-    console.log("Swapping pieces");
-    const tmpX = selectedPiece.currentX;
-    const tmpY = selectedPiece.currentY;
-    selectedPiece.currentX = target.currentX;
-    selectedPiece.currentY = target.currentY;
-    target.currentX = tmpX;
-    target.currentY = tmpY;
+    if (selectedPiece !== tapped) {
+      const tempX = selectedPiece.currentX;
+      const tempY = selectedPiece.currentY;
+      selectedPiece.currentX = tapped.currentX;
+      selectedPiece.currentY = tapped.currentY;
+      tapped.currentX = tempX;
+      tapped.currentY = tempY;
+    }
+    selectedPiece = null;
   }
 
-  selectedPiece = null;
   drawPuzzle();
   checkSolved();
 }
 
-// Add event listeners for both mouse and touch interactions
-canvas.addEventListener("mousedown", onStart);
-canvas.addEventListener("mousemove", onMove);
-canvas.addEventListener("mouseup", onEnd);
-
-canvas.addEventListener("touchstart", onStart, { passive: false });
-canvas.addEventListener("touchmove", onMove, { passive: false });
-canvas.addEventListener("touchend", onEnd, { passive: false });
-
+// Puzzle completion check
 function checkSolved() {
-  const solved = pieces.every(p => p.x === p.currentX && p.y === p.currentY);
-  if (solved) {
+  const isSolved = pieces.every(p => p.x === p.currentX && p.y === p.currentY);
+  if (isSolved) {
     stopTimer();
-    const timeTaken = Math.floor((Date.now() - startTime) / 1000);
+    const totalTime = Math.floor((Date.now() - startTime) / 1000);
     document.getElementById("qr").style.display = "block";
-    document.getElementById("finalTime").textContent = `${playerName}, you completed the puzzle in ${timeTaken} seconds!`;
+    document.getElementById("finalTime").textContent = `${playerName}, you completed the puzzle in ${totalTime} seconds!`;
 
+    // Optional: Send data to email
     fetch("https://formsubmit.co/ajax/vinaypratap10457.10d@gmail.com", {
       method: "POST",
       headers: {
@@ -173,8 +195,17 @@ function checkSolved() {
       },
       body: JSON.stringify({
         name: playerName,
-        message: `Completed in ${timeTaken} seconds`
+        message: `Completed in ${totalTime} seconds`
       })
     });
   }
 }
+
+// Event listeners
+canvas.addEventListener("click", onTap);
+canvas.addEventListener("touchstart", onTap, { passive: false });
+
+document.getElementById("imageUpload").addEventListener("change", function(event) {
+  const file = event.target.files[0];
+  if (file) loadUserImage(file);
+});
