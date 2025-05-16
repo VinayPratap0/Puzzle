@@ -1,29 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Jigsaw Puzzle with QR Reveal</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <h1>Complete the Puzzle to Reveal the Invitation</h1>
     
-    <!-- Name input before starting the game -->
     <div id="nameForm">
       <label for="playerName">Enter your name:</label>
       <input type="text" id="playerName" placeholder="Your Name" />
       <button onclick="startGame()">Start Game</button>
     </div>
 
-    <div id="timer">Time: 0s</div>
+
+    <div id="timer" style="display:none;">Time: 0s</div>
     <canvas id="puzzleCanvas" width="400" height="400"></canvas>
-    
-    <div id="qr" style="display:none">
+
+    <div id="qr">
       <h2>You're Invited!</h2>
       <p id="finalTime"></p>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?data=https://your-invite-link.com&size=200x200" alt="QR Code">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?data=https://your-invite-link.com&size=200x200" alt="QR Code" />
     </div>
   </div>
   <script src="script.js"></script>
