@@ -73,13 +73,14 @@ function drawPuzzle(highlighted) {
     );
     if (highlighted && highlighted === p) {
       ctx.strokeStyle = "red";
+      ctx.lineWidth = 3;
       ctx.strokeRect(p.currentX * pieceSize, p.currentY * pieceSize, pieceSize, pieceSize);
     }
   }
 }
 
-// Handle both mouse and touch events
 function getEventPosition(event) {
+  event.preventDefault();
   const rect = canvas.getBoundingClientRect();
   let x, y;
 
@@ -105,12 +106,14 @@ function onStart(event) {
 
 function onMove(event) {
   if (dragging && selectedPiece) {
+    event.preventDefault();
     drawPuzzle(selectedPiece);
   }
 }
 
 function onEnd(event) {
   if (!dragging || !selectedPiece) return;
+  event.preventDefault();
   dragging = false;
   const { x, y } = getEventPosition(event);
   const cx = Math.floor(x / pieceSize);
@@ -131,13 +134,14 @@ function onEnd(event) {
   checkSolved();
 }
 
+// Add event listeners for both mouse and touch interactions
 canvas.addEventListener("mousedown", onStart);
 canvas.addEventListener("mousemove", onMove);
 canvas.addEventListener("mouseup", onEnd);
 
-canvas.addEventListener("touchstart", onStart);
-canvas.addEventListener("touchmove", onMove);
-canvas.addEventListener("touchend", onEnd);
+canvas.addEventListener("touchstart", onStart, { passive: false });
+canvas.addEventListener("touchmove", onMove, { passive: false });
+canvas.addEventListener("touchend", onEnd, { passive: false });
 
 function checkSolved() {
   const solved = pieces.every(p => p.x === p.currentX && p.y === p.currentY);
