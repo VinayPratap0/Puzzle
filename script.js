@@ -87,9 +87,11 @@ function getEventPosition(event) {
   if (event.touches) {
     x = event.touches[0].clientX - rect.left;
     y = event.touches[0].clientY - rect.top;
+    console.log(`Touch detected at: ${x}, ${y}`);
   } else {
     x = event.clientX - rect.left;
     y = event.clientY - rect.top;
+    console.log(`Mouse detected at: ${x}, ${y}`);
   }
   
   return { x, y };
@@ -97,16 +99,25 @@ function getEventPosition(event) {
 
 function onStart(event) {
   event.preventDefault();
+  console.log("Touch or mouse start detected");
+
   const { x, y } = getEventPosition(event);
   const cx = Math.floor(x / pieceSize);
   const cy = Math.floor(y / pieceSize);
+  
+  console.log(`Detected grid: (${cx}, ${cy})`);
+  
   selectedPiece = pieces.find(p => p.currentX === cx && p.currentY === cy);
-  if (selectedPiece) dragging = true;
+  if (selectedPiece) {
+    console.log("Piece selected");
+    dragging = true;
+  }
 }
 
 function onMove(event) {
   if (dragging && selectedPiece) {
     event.preventDefault();
+    console.log("Dragging...");
     drawPuzzle(selectedPiece);
   }
 }
@@ -114,13 +125,16 @@ function onMove(event) {
 function onEnd(event) {
   if (!dragging || !selectedPiece) return;
   event.preventDefault();
+  console.log("Touch or mouse end detected");
+
   dragging = false;
   const { x, y } = getEventPosition(event);
   const cx = Math.floor(x / pieceSize);
   const cy = Math.floor(y / pieceSize);
-  const target = pieces.find(p => p.currentX === cx && p.currentY === cy);
 
+  const target = pieces.find(p => p.currentX === cx && p.currentY === cy);
   if (target && target !== selectedPiece) {
+    console.log("Swapping pieces");
     const tmpX = selectedPiece.currentX;
     const tmpY = selectedPiece.currentY;
     selectedPiece.currentX = target.currentX;
