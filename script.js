@@ -5,31 +5,28 @@ const pieceSize = canvas.width / cols;
 let pieces = [], dragging = false, selectedPiece = null;
 
 let startTime, timerInterval;
-let playerName = ""; // Store the player's name
+let playerName = "";
 
 const image = new Image();
 image.crossOrigin = "Anonymous";
 image.src = "https://picsum.photos/400";
 
-// Wait for the image to load before starting the puzzle
 image.onload = () => {
   initPuzzle();
   drawPuzzle();
 };
 
 function startGame() {
-  // Get the player's name from the input field
   playerName = document.getElementById("playerName").value;
   if (!playerName) {
     alert("Please enter your name to start the game.");
     return;
   }
-  
-  // Hide the name input form and show the puzzle
+
   document.getElementById("nameForm").style.display = "none";
   document.getElementById("timer").style.display = "block";
-  
-  startTimer(); // Start the timer when the game begins
+
+  startTimer();
 }
 
 function startTimer() {
@@ -81,28 +78,41 @@ function drawPuzzle(highlighted) {
   }
 }
 
-canvas.addEventListener("mousedown", (e) => {
+// Handle both mouse and touch events
+function getEventPosition(event) {
   const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+  let x, y;
+
+  if (event.touches) {
+    x = event.touches[0].clientX - rect.left;
+    y = event.touches[0].clientY - rect.top;
+  } else {
+    x = event.clientX - rect.left;
+    y = event.clientY - rect.top;
+  }
+  
+  return { x, y };
+}
+
+function onStart(event) {
+  event.preventDefault();
+  const { x, y } = getEventPosition(event);
   const cx = Math.floor(x / pieceSize);
   const cy = Math.floor(y / pieceSize);
   selectedPiece = pieces.find(p => p.currentX === cx && p.currentY === cy);
   if (selectedPiece) dragging = true;
-});
+}
 
-canvas.addEventListener("mousemove", (e) => {
+function onMove(event) {
   if (dragging && selectedPiece) {
     drawPuzzle(selectedPiece);
   }
-});
+}
 
-canvas.addEventListener("mouseup", (e) => {
+function onEnd(event) {
   if (!dragging || !selectedPiece) return;
   dragging = false;
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+  const { x, y } = getEventPosition(event);
   const cx = Math.floor(x / pieceSize);
   const cy = Math.floor(y / pieceSize);
   const target = pieces.find(p => p.currentX === cx && p.currentY === cy);
@@ -119,7 +129,15 @@ canvas.addEventListener("mouseup", (e) => {
   selectedPiece = null;
   drawPuzzle();
   checkSolved();
-});
+}
+
+canvas.addEventListener("mousedown", onStart);
+canvas.addEventListener("mousemove", onMove);
+canvas.addEventListener("mouseup", onEnd);
+
+canvas.addEventListener("touchstart", onStart);
+canvas.addEventListener("touchmove", onMove);
+canvas.addEventListener("touchend", onEnd);
 
 function checkSolved() {
   const solved = pieces.every(p => p.x === p.currentX && p.y === p.currentY);
@@ -129,7 +147,6 @@ function checkSolved() {
     document.getElementById("qr").style.display = "block";
     document.getElementById("finalTime").textContent = `${playerName}, you completed the puzzle in ${timeTaken} seconds!`;
 
-    // Send result via email with the player's name and time
     fetch("https://formsubmit.co/ajax/vinaypratap10457.10d@gmail.com", {
       method: "POST",
       headers: {
@@ -137,7 +154,7 @@ function checkSolved() {
         Accept: "application/json"
       },
       body: JSON.stringify({
-        name: playerName, // Include player's name in the email
+        name: playerName,
         message: `Completed in ${timeTaken} seconds`
       })
     });
